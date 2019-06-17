@@ -14,6 +14,7 @@ public class RabbitMQTest {
 
 	
 	private final static String CONNECTION_HOST = "localhost";	
+	private static final String EXCHANGE_NAME = "logs";
 	private final static String TASK_QUEUE_NAME = "task_queue";
     private final static String QUEUE_NAME = "hello";
 
@@ -22,11 +23,14 @@ public class RabbitMQTest {
     public static void main(String[] argv) throws IOException, TimeoutException {
     	
     	 
-    	sendMessage();
-    	receiveMessage();
+    	//sendMessage();
+    	//receiveMessage();
     	
     	//newTask(argv);
     	//Worker();
+    	
+    	//EmitLog(argv);
+    	//ReceiveLogs();
     }	
     // -----------------------------------------------------------------------------------
     
@@ -42,6 +46,36 @@ public class RabbitMQTest {
     // -----------------------------------------------------------------------------------
     
     
+    
+    
+    
+    // -----------------------------------------------------------------------------------
+    public static void EmitLog(String[] argv) throws IOException, TimeoutException {
+    	// The most important change is that we now want to publish messages to our logs exchange instead of the nameless one.
+    	Channel channel = createNewChannel();
+    	channel.exchangeDeclare(EXCHANGE_NAME, "fanout");
+    	String message = argv.length < 1 ? "info: Hello World!" :
+                             String.join(" ", argv);
+    	channel.basicPublish(EXCHANGE_NAME, "", null, message.getBytes("UTF-8"));
+    	System.out.println(" [x] Sent '" + message + "'");
+    }
+    // -----------------------------------------------------------------------------------
+    public static void ReceiveLogs() throws IOException, TimeoutException {
+    	Channel channel = createNewChannel();
+    	channel.exchangeDeclare(EXCHANGE_NAME, "fanout");
+    	String queueName = channel.queueDeclare().getQueue();
+    	channel.queueBind(queueName, EXCHANGE_NAME, "");
+    	
+    	System.out.println(" [*] Waiting for messages. To exit press CTRL+C");
+    	
+    	DeliverCallback deliverCallback = (consumerTag, delivery) -> {
+    		String message = new String(delivery.getBody(), "UTF-8");
+    		System.out.println(" [x] Received '" + message + "'");
+    	};
+    	
+    	channel.basicConsume(queueName, true, deliverCallback, consumerTag -> { });
+    }
+    // -----------------------------------------------------------------------------------
     
     
     
